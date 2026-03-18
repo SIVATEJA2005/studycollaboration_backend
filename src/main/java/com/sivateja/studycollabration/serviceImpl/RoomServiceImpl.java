@@ -163,7 +163,9 @@ public class RoomServiceImpl implements RoomService {
                 .description(room.getDescription())
                 .icon(room.getIcon())
                 .tag(room.getTag())
-                .memberSize(members.size())
+                .memberCount(members.size())
+                .inviteCode(room.getInviteCode())
+                .members(members)
                 .createdByName(room.getCreatedBy().getUserName())
                 .createdById(room.getCreatedBy().getId())
                 .build();
