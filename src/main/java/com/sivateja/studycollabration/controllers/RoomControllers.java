@@ -62,4 +62,10 @@ public class RoomControllers {
         roomService.leaveRoom(id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/getAllRooms")
+    public ResponseEntity<List<RoomResponseDTO>> getAllRooms()
+    {
+        return ResponseEntity.ok(roomService.getMyRooms());
+    }
 }

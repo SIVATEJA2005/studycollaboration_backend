@@ -28,4 +28,6 @@ public interface RoomRepository extends JpaRepository<Room,Long>
     // Use the username-based approach for the Name query
     @Query("SELECT DISTINCT r FROM Room r LEFT JOIN r.members m WHERE r.createdBy.userName = :userName OR m.user.userName = :userName")
     List<Room> findRoomsByUserName(@Param("userName") String userName);
+
+//    <T> ScopedValue<T> findByRoomIdAndUserName(Long roomId);
 }
