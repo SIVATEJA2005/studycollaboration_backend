@@ -37,8 +37,6 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     public ResourceResponseDTO addLink(Long roomId, ResourceRequestDTO req, Users user) {
         Room room = getRoom(roomId);
-//        checkMember(room, user);
-
         Resource resource = Resource.builder()
                 .title(req.getTitle() != null && !req.getTitle().isBlank()
                         ? req.getTitle() : req.getUrl())
