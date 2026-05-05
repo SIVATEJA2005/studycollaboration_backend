@@ -8,20 +8,22 @@ import com.sivateja.studycollabration.entities.Users;
 import com.sivateja.studycollabration.model.ResourceType;
 import com.sivateja.studycollabration.repository.ResourceRepository;
 import com.sivateja.studycollabration.repository.RoomRepository;
-//import com.sivateja.studycollabration.services.LinkPreviewService;
 import com.sivateja.studycollabration.services.ResourceService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ResourceServiceImpl implements ResourceService {
@@ -30,6 +32,11 @@ public class ResourceServiceImpl implements ResourceService {
     private final RoomRepository roomRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final LinkPreviewServiceImpl linkPreviewService;
+
+    // ✅ Inject our new AI services
+    private final PdfTextExtractorService pdfTextExtractorService;
+    private final EmbeddingService embeddingService;
+    private final PineconeService pineconeService;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -62,12 +69,15 @@ public class ResourceServiceImpl implements ResourceService {
         Room room = getRoom(roomId);
         Path uploadPath = Paths.get(uploadDir, "resources", String.valueOf(roomId));
         Files.createDirectories(uploadPath);
+
         String originalName = file.getOriginalFilename();
-        String storedName   = UUID.randomUUID() + "_" + originalName;
+        String storedName = UUID.randomUUID() + "_" + originalName;
         Path filePath = uploadPath.resolve(storedName);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
         ResourceType type = detectType(file.getContentType());
         String fileUrl = "/api/resources/download/" + roomId + "/" + storedName;
+
         Resource resource = Resource.builder()
                 .title(title != null && !title.isBlank() ? title : originalName)
                 .url(fileUrl)
@@ -77,7 +87,19 @@ public class ResourceServiceImpl implements ResourceService {
                 .room(room)
                 .addedBy(user)
                 .build();
+
         resource = resourceRepository.save(resource);
+
+        // ✅ Auto-index PDF into Pinecone after saving
+        if (type == ResourceType.PDF) {
+            indexPdfAsync(
+                    filePath.toString(),
+                    originalName,
+                    String.valueOf(resource.getId()),
+                    String.valueOf(roomId)
+            );
+        }
+
         ResourceResponseDTO response = toResponse(resource);
         messagingTemplate.convertAndSend("/topic/room/" + roomId + "/resources", response);
         return response;
@@ -100,7 +122,7 @@ public class ResourceServiceImpl implements ResourceService {
 
         Long roomId = resource.getRoom().getId();
 
-        // delete physical file if uploaded
+        // Delete physical file if uploaded
         if (resource.getType() != ResourceType.LINK) {
             try {
                 String filename = Paths.get(resource.getUrl()).getFileName().toString();
@@ -108,6 +130,11 @@ public class ResourceServiceImpl implements ResourceService {
                         String.valueOf(roomId), filename);
                 Files.deleteIfExists(filePath);
             } catch (IOException ignored) {}
+        }
+
+        // ✅ Delete vectors from Pinecone when file is deleted
+        if (resource.getType() == ResourceType.PDF) {
+            pineconeService.deleteVectorsByResourceId(String.valueOf(resourceId));
         }
 
         resourceRepository.delete(resource);
@@ -122,24 +149,54 @@ public class ResourceServiceImpl implements ResourceService {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    // ✅ Index PDF in a separate thread so upload doesn't slow down
+    private void indexPdfAsync(String filePath, String originalName,
+                               String resourceId, String roomId) {
+        new Thread(() -> {
+            try {
+                log.info("Starting PDF indexing for resource: {}", resourceId);
+
+                // 1. Extract text
+                String text = pdfTextExtractorService.extractText(filePath);
+
+                // 2. Split into chunks
+                List<String> chunks = pdfTextExtractorService.splitIntoChunks(text, 500);
+
+                // 3. Embed and upsert each chunk into Pinecone
+                for (int i = 0; i < chunks.size(); i++) {
+                    String chunkText = chunks.get(i);
+                    List<Double> embedding = embeddingService.getEmbedding(chunkText);
+
+                    String vectorId = resourceId + "_chunk_" + i;
+                    java.util.Map<String, String> metadata = java.util.Map.of(
+                            "text", chunkText,
+                            "fileName", originalName,
+                            "roomId", roomId,
+                            "resourceId", resourceId,
+                            "chunkIndex", String.valueOf(i)
+                    );
+                    pineconeService.upsertVector(vectorId, embedding, metadata);
+                }
+
+                log.info("PDF indexed successfully: {} chunks for resource {}",
+                        chunks.size(), resourceId);
+
+            } catch (Exception e) {
+                log.error("Failed to index PDF for resource: {}", resourceId, e);
+            }
+        }).start();
+    }
+
     private Room getRoom(Long roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
     }
 
-//    private void checkMember(Room room, Users user) {
-//        boolean isMember = room.getMembers().stream()
-//                .filter(m -> m != null)
-//                .anyMatch(m -> m.getId().equals(user.getId()));
-//        if (!isMember)
-//            throw new RuntimeException("Only room members can manage resources");
-//    }
-
     private ResourceType detectType(String mimeType) {
-        if (mimeType == null)                           return ResourceType.FILE;
-        if (mimeType.equals("application/pdf"))         return ResourceType.PDF;
-        if (mimeType.startsWith("image/"))              return ResourceType.IMAGE;
-        if (mimeType.startsWith("video/"))              return ResourceType.VIDEO;
+        if (mimeType == null)                       return ResourceType.FILE;
+        if (mimeType.equals("application/pdf"))     return ResourceType.PDF;
+        if (mimeType.startsWith("image/"))          return ResourceType.IMAGE;
+        if (mimeType.startsWith("video/"))          return ResourceType.VIDEO;
         return ResourceType.FILE;
     }
 
