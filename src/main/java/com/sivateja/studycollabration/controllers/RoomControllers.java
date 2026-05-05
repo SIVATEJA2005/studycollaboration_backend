@@ -1,6 +1,4 @@
 package com.sivateja.studycollabration.controllers;
-
-
 import com.sivateja.studycollabration.Security.CustomUserDetails;
 import com.sivateja.studycollabration.dto.Room.InviteCodeDTo;
 import com.sivateja.studycollabration.dto.Room.RoomRequestDTO;
@@ -31,15 +29,15 @@ public class RoomControllers {
     // Dashboard.jsx: GET /room/myRooms
     @GetMapping("/myRooms")
     public ResponseEntity<List<RoomResponseDTO>> getMyRooms() {
+        System.out.println("in my rooms");
         return ResponseEntity.ok(roomService.getMyRooms());
     }
-
     // RoomPage.jsx: GET /room/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<RoomResponseDTO> getRoom(@PathVariable Long id) {
+    public ResponseEntity<RoomResponseDTO> getRoom(@PathVariable Long id)
+    {
         return ResponseEntity.ok(roomService.getRoomById(id));
     }
-
     // Dashboard.jsx JoinByCodeModal: POST /room/join-by-code  body: {code}
     @PostMapping("/join-by-code")
     public ResponseEntity<RoomResponseDTO> joinByCode(
@@ -47,14 +45,12 @@ public class RoomControllers {
         System.out.println("in join by code");
         return ResponseEntity.ok(roomService.joinByCode(req.getCode()));
     }
-
     // RoomPage.jsx MembersDrawer: GET /room/join/{id}
     @GetMapping("/join/{id}")
     public ResponseEntity<RoomResponseDTO> joinById(
             @PathVariable Long id) {
         return ResponseEntity.ok(roomService.joinById(id));
     }
-
     // RoomPage.jsx MembersDrawer: GET /room/leave/{id}
     @GetMapping("/leave/{id}")
     public ResponseEntity<Void> leaveRoom(
@@ -62,7 +58,6 @@ public class RoomControllers {
         roomService.leaveRoom(id);
         return ResponseEntity.ok().build();
     }
-
     @GetMapping("/getAllRooms")
     public ResponseEntity<List<RoomResponseDTO>> getAllRooms()
     {
