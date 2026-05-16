@@ -21,11 +21,9 @@ public class EmbeddingService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     // ✅ FIXED: gemini-embedding-001 is the correct available model (outputs 3072 dimensions)
     private static final String EMBEDDING_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
-
     public List<Double> getEmbedding(String text) {
         try {
             HttpHeaders headers = new HttpHeaders();

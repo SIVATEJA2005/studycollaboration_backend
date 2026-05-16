@@ -51,6 +51,8 @@ public class ResourceController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title,
             @AuthenticationPrincipal UserDetails userDetails) throws IOException {
+
+        System.out.println("in resource uploads");
         return ResponseEntity.ok(
                 resourceService.uploadFile(roomId, file, title, getUser(userDetails)));
     }

@@ -27,4 +27,5 @@ public interface UserServices {
     public Map<String, Object> login(String email, String password);
 
 
+    String activateUser(String token);
 }

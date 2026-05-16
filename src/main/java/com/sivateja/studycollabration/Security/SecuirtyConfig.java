@@ -1,6 +1,7 @@
 package com.sivateja.studycollabration.Security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +29,9 @@ public class SecuirtyConfig {
 
     private final JwtFilter jwtFilter;
 
+    @Value("${frontend_url}")
+    private String frontend_url;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,7 +39,7 @@ public class SecuirtyConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
                 .cors(Customizer.withDefaults()) // Looks for corsConfigurationSource bean
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("api/users/login", "api/users/register", "/health","/ws/**").permitAll()
+                        .requestMatchers("/api/users/login", "/api/users/register", "/health","/ws/**","api/users/activate").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -48,7 +52,8 @@ public class SecuirtyConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // Allow your frontend origin (e.g., http://localhost:3000)
         // For development, you can use setAllowedOriginPatterns(List.of("*"))
-        configuration.setAllowedOriginPatterns(List.of("*"));
+//        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(List.of(frontend_url));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true); // Must be true if you use Cookies or JSESSIONID

@@ -28,7 +28,6 @@ public class AiChatService {
     // Groq API endpoint
     private static final String GROQ_URL =
             "https://api.groq.com/openai/v1/chat/completions";
-
     // Best free model on Groq
     private static final String GROQ_MODEL = "llama-3.3-70b-versatile";
 

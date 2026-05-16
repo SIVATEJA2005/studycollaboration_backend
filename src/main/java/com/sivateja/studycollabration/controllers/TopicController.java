@@ -22,11 +22,9 @@ public class TopicController {
 
     private final TopicService topicService;
     private final UserRepository userRepository;
-
     private Users getUser(UserDetails u) {
         return userRepository.findByUserName(u.getUsername()).orElseThrow();
     }
-
     // Add topic to room
     @PostMapping("/room/{roomId}")
     public ResponseEntity<TopicResponseDTO> addTopic(
@@ -36,14 +34,12 @@ public class TopicController {
         return ResponseEntity.ok(
                 topicService.addTopic(roomId, req, getUser(userDetails)));
     }
-
     // Get all topics in room
     @GetMapping("/room/{roomId}")
     public ResponseEntity<List<TopicResponseDTO>> getTopics(
             @PathVariable Long roomId) {
         return ResponseEntity.ok(topicService.getTopics(roomId));
     }
-
     // Claim a topic
     @PutMapping("/{topicId}/claim")
     public ResponseEntity<TopicResponseDTO> claimTopic(
@@ -52,7 +48,6 @@ public class TopicController {
         return ResponseEntity.ok(
                 topicService.claimTopic(topicId, getUser(userDetails)));
     }
-
     // Unclaim a topic
     @PutMapping("/{topicId}/unclaim")
     public ResponseEntity<TopicResponseDTO> unclaimTopic(

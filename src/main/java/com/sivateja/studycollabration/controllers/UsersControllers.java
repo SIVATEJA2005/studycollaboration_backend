@@ -75,4 +75,15 @@ public class UsersControllers {
     public ResponseEntity<List<RoomResponseDTO>> getUserRooms(@PathVariable Long id) {
         return ResponseEntity.ok((userService.getUserRooms(id)));
     }
+
+    @GetMapping(value = "/activate", produces = "text/html")
+    public ResponseEntity<String> activateAccount(@RequestParam String token) {
+        String message = userService.activateUser(token);
+        return ResponseEntity.ok(
+                "<html><body style='font-family:sans-serif;text-align:center;margin-top:80px'>"
+                        + "<h2 style='color:#3b82f6'>🎉 " + message + "</h2>"
+                        + "<p><a href='http://localhost:5173/' style='color:#ec4899'>Go to Login →</a></p>"
+                        + "</body></html>"
+        );
+    }
 }

@@ -11,6 +11,7 @@ import com.sivateja.studycollabration.repository.RoomRepository;
 import com.sivateja.studycollabration.repository.UserRepository;
 import com.sivateja.studycollabration.services.UserServices;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,10 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 //import java.nio.file.AccessDeniedException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,21 +35,34 @@ public class UserServiceImpl implements UserServices {
     private final JwtConfig jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final BCryptPasswordEncoder passwordEncoder;
+    // Add to constructor injection
+    private final EmailServices emailService;
+
+    @Value("${app.backend.url}")
+    private String backendUrl;
 
     @Override
-    public UserResponseDTO registerUser(UserRequestDTO  user) {
-        try {
-            if(userRepository.existsByEmail(user.getEmail()))
-            {
-                throw new RuntimeException("Email already exists");
-            }
-            Users userEntity=toUserEntity(user);
-            userEntity.setPassword(passwordEncoder.encode(userEntity.getPassword()));
-            Users savedUser=userRepository.save(userEntity);
-            return toUserDTO(savedUser);
-        } catch (RuntimeException e) {
-            throw new RuntimeException(e);
+    public UserResponseDTO registerUser(UserRequestDTO user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email already exists");
         }
+
+        // Generate activation token
+        String token = UUID.randomUUID().toString();
+
+        // Build user entity — inactive until email verified
+        Users userEntity = toUserEntity(user);
+        userEntity.setPassword(passwordEncoder.encode(userEntity.getPassword()));
+        userEntity.setActive(false);
+        userEntity.setActivationToken(token);
+
+        Users savedUser = userRepository.save(userEntity);
+
+        // Send activation email
+        String activationLink = backendUrl + "/api/users/activate?token=" + token;
+        emailService.sendActivationEmail(savedUser.getEmail(), savedUser.getDisplayName(), activationLink);
+
+        return toUserDTO(savedUser);
     }
 
     @Override
@@ -170,6 +181,21 @@ public class UserServiceImpl implements UserServices {
         if (req.getPassword() != null) user.setPassword(req.getPassword());
 
         return toUserDTO(userRepository.save(user));
+    }
+
+    public String activateUser(String token) {
+        Users user = userRepository.findByActivationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or already used activation link"));
+
+        if (user.isActive()) {
+            return "Account is already activated. Please log in.";
+        }
+
+        user.setActive(true);
+        user.setActivationToken(null); // clear token after use
+        userRepository.save(user);
+
+        return "Your account has been activated! You can now log in.";
     }
 
 

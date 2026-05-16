@@ -29,17 +29,18 @@ public class Users
     private String email;
     @Column(nullable=false)
     private String password;
+    @Column(nullable = false)
+    private boolean isActive = false;
+    @Column(unique = true)
+    private String activationToken;
     @Enumerated(EnumType.STRING)
     private UserRole role;
     @CreationTimestamp
     private LocalDateTime createdAt;
-
     @OneToMany(mappedBy="user",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<RoomMembers> roomMemberShips;
-
     @OneToMany(mappedBy = "createdBy")
     private List<Room> rooms;
-
     @OneToMany(mappedBy = "createdBy")
     private List<Notes> notes;
 
