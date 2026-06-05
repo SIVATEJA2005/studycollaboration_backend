@@ -1,4 +1,5 @@
 package com.sivateja.studycollabration.serviceImpl;
+
 import com.sivateja.studycollabration.dto.Resource.LinkPreviewDTO;
 import com.sivateja.studycollabration.dto.Resource.ResourceRequestDTO;
 import com.sivateja.studycollabration.dto.Resource.ResourceResponseDTO;
@@ -12,15 +13,14 @@ import com.sivateja.studycollabration.services.ResourceService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.sivateja.studycollabration.serviceImpl.CloudinaryService;
 
 import java.io.IOException;
-import java.nio.file.*;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,14 +32,11 @@ public class ResourceServiceImpl implements ResourceService {
     private final RoomRepository roomRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final LinkPreviewServiceImpl linkPreviewService;
-
-    // ✅ Inject our new AI services
+    private final CloudinaryService cloudinaryService;
+    // AI services
     private final PdfTextExtractorService pdfTextExtractorService;
     private final EmbeddingService embeddingService;
     private final PineconeService pineconeService;
-
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
 
     @Override
     public ResourceResponseDTO addLink(Long roomId, ResourceRequestDTO req, Users user) {
@@ -67,20 +64,16 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceResponseDTO uploadFile(Long roomId, MultipartFile file,
                                           String title, Users user) throws IOException {
         Room room = getRoom(roomId);
-        Path uploadPath = Paths.get(uploadDir, "resources", String.valueOf(roomId));
-        Files.createDirectories(uploadPath);
 
-        String originalName = file.getOriginalFilename();
-        String storedName = UUID.randomUUID() + "_" + originalName;
-        Path filePath = uploadPath.resolve(storedName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        // ✅ Upload to Cloudinary instead of local disk
+        String fileUrl = cloudinaryService.uploadFile(file, "resources/" + roomId);
 
         ResourceType type = detectType(file.getContentType());
-        String fileUrl = "/api/resources/download/" + roomId + "/" + storedName;
+        String originalName = file.getOriginalFilename();
 
         Resource resource = Resource.builder()
                 .title(title != null && !title.isBlank() ? title : originalName)
-                .url(fileUrl)
+                .url(fileUrl) // ✅ Cloudinary public URL stored in DB
                 .type(type)
                 .originalFileName(originalName)
                 .fileSize(file.getSize())
@@ -93,7 +86,7 @@ public class ResourceServiceImpl implements ResourceService {
         // ✅ Auto-index PDF into Pinecone after saving
         if (type == ResourceType.PDF) {
             indexPdfAsync(
-                    filePath.toString(),
+                    fileUrl,       // ✅ pass Cloudinary URL instead of local path
                     originalName,
                     String.valueOf(resource.getId()),
                     String.valueOf(roomId)
@@ -122,17 +115,15 @@ public class ResourceServiceImpl implements ResourceService {
 
         Long roomId = resource.getRoom().getId();
 
-        // Delete physical file if uploaded
+        // ✅ Delete from Cloudinary instead of local disk
         if (resource.getType() != ResourceType.LINK) {
-            try {
-                String filename = Paths.get(resource.getUrl()).getFileName().toString();
-                Path filePath = Paths.get(uploadDir, "resources",
-                        String.valueOf(roomId), filename);
-                Files.deleteIfExists(filePath);
-            } catch (IOException ignored) {}
+            String publicId = cloudinaryService.extractPublicId(resource.getUrl());
+            if (publicId != null) {
+                cloudinaryService.deleteFile(publicId);
+            }
         }
 
-        // ✅ Delete vectors from Pinecone when file is deleted
+        // Delete vectors from Pinecone when PDF is deleted
         if (resource.getType() == ResourceType.PDF) {
             pineconeService.deleteVectorsByResourceId(String.valueOf(resourceId));
         }
@@ -149,26 +140,29 @@ public class ResourceServiceImpl implements ResourceService {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    // ✅ Index PDF in a separate thread so upload doesn't slow down
-    private void indexPdfAsync(String filePath, String originalName,
+    // ✅ Updated to download PDF from Cloudinary URL for indexing
+    private void indexPdfAsync(String fileUrl, String originalName,
                                String resourceId, String roomId) {
         new Thread(() -> {
             try {
                 log.info("Starting PDF indexing for resource: {}", resourceId);
 
-                // 1. Extract text
-                String text = pdfTextExtractorService.extractText(filePath);
+                // Download PDF bytes from Cloudinary URL
+                byte[] pdfBytes = new java.net.URL(fileUrl).openStream().readAllBytes();
 
-                // 2. Split into chunks
+                // Extract text from bytes
+                String text = pdfTextExtractorService.extractTextFromBytes(pdfBytes);
+
+                // Split into chunks
                 List<String> chunks = pdfTextExtractorService.splitIntoChunks(text, 500);
 
-                // 3. Embed and upsert each chunk into Pinecone
+                // Embed and upsert each chunk into Pinecone
                 for (int i = 0; i < chunks.size(); i++) {
                     String chunkText = chunks.get(i);
                     List<Double> embedding = embeddingService.getEmbedding(chunkText);
 
                     String vectorId = resourceId + "_chunk_" + i;
-                    java.util.Map<String, String> metadata = java.util.Map.of(
+                    Map<String, String> metadata = Map.of(
                             "text", chunkText,
                             "fileName", originalName,
                             "roomId", roomId,

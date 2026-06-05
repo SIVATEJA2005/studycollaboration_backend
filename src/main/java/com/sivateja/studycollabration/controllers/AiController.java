@@ -6,13 +6,12 @@ import com.sivateja.studycollabration.serviceImpl.PdfTextExtractorService;
 import com.sivateja.studycollabration.serviceImpl.PineconeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
-
 
 @Slf4j
 @RestController
@@ -25,24 +24,24 @@ public class AiController {
     private final EmbeddingService embeddingService;
     private final PineconeService pineconeService;
 
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+    // ✅ REMOVED: uploadDir — no longer needed, files are on Cloudinary now
 
     // POST /api/ai/index-pdf
-    // Call this after uploading a PDF to index it into Pinecone
+    // Now accepts cloudinaryUrl instead of local fileName
     @PostMapping("/index-pdf")
     public ResponseEntity<?> indexPdf(
             @RequestParam Long roomId,
-            @RequestParam String fileName,       // stored file name (UUID_original.pdf)
-            @RequestParam String originalName,   // original file name for display
+            @RequestParam String cloudinaryUrl,  // ✅ changed from fileName
+            @RequestParam String originalName,
             @RequestParam String resourceId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         try {
-            String filePath = uploadDir + "/resources/" + roomId + "/" + fileName;
+            // ✅ Download PDF bytes from Cloudinary URL
+            byte[] pdfBytes = new java.net.URL(cloudinaryUrl).openStream().readAllBytes();
 
-            // 1. Extract text from PDF
-            String text = pdfTextExtractorService.extractText(filePath);
+            // 1. Extract text from bytes
+            String text = pdfTextExtractorService.extractTextFromBytes(pdfBytes);
 
             // 2. Split into chunks
             List<String> chunks = pdfTextExtractorService.splitIntoChunks(text, 500);
@@ -76,7 +75,7 @@ public class AiController {
     }
 
     // POST /api/ai/ask
-    // RAG: ask a question about room's study material
+    // RAG: ask a question about room's study material — NO CHANGE NEEDED ✅
     @PostMapping("/ask")
     public ResponseEntity<?> ask(
             @RequestBody Map<String, String> body,
@@ -100,15 +99,15 @@ public class AiController {
     }
 
     // POST /api/ai/summarize
-    // Summarize a specific PDF file
+    // ✅ Now accepts cloudinaryUrl instead of local fileName
     @PostMapping("/summarize")
     public ResponseEntity<?> summarize(
-            @RequestParam Long roomId,
-            @RequestParam String fileName,
+            @RequestParam String cloudinaryUrl,  // ✅ changed from roomId + fileName
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
-            String filePath = uploadDir + "/resources/" + roomId + "/" + fileName;
-            String text = pdfTextExtractorService.extractText(filePath);
+            // ✅ Download PDF bytes from Cloudinary URL
+            byte[] pdfBytes = new java.net.URL(cloudinaryUrl).openStream().readAllBytes();
+            String text = pdfTextExtractorService.extractTextFromBytes(pdfBytes);
             String summary = aiChatService.summarize(text);
             return ResponseEntity.ok(Map.of("summary", summary));
 
@@ -120,16 +119,16 @@ public class AiController {
     }
 
     // POST /api/ai/quiz
-    // Generate quiz from a specific PDF file
+    // ✅ Now accepts cloudinaryUrl instead of local fileName
     @PostMapping("/quiz")
     public ResponseEntity<?> generateQuiz(
-            @RequestParam Long roomId,
-            @RequestParam String fileName,
+            @RequestParam String cloudinaryUrl,  // ✅ changed from roomId + fileName
             @RequestParam(defaultValue = "5") int numQuestions,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
-            String filePath = uploadDir + "/resources/" + roomId + "/" + fileName;
-            String text = pdfTextExtractorService.extractText(filePath);
+            // ✅ Download PDF bytes from Cloudinary URL
+            byte[] pdfBytes = new java.net.URL(cloudinaryUrl).openStream().readAllBytes();
+            String text = pdfTextExtractorService.extractTextFromBytes(pdfBytes);
             String quiz = aiChatService.generateQuiz(text, numQuestions);
             return ResponseEntity.ok(Map.of("quiz", quiz));
 
@@ -140,8 +139,7 @@ public class AiController {
         }
     }
 
-    // DELETE /api/ai/index/{resourceId}
-    // Remove vectors when a file is deleted
+    // DELETE /api/ai/index/{resourceId} — NO CHANGE NEEDED ✅
     @DeleteMapping("/index/{resourceId}")
     public ResponseEntity<?> deleteIndex(@PathVariable String resourceId) {
         try {
