@@ -4,6 +4,7 @@ import com.sivateja.studycollabration.dto.user.UserRequestDTO;
 import com.sivateja.studycollabration.dto.user.UserResponseDTO;
 import com.sivateja.studycollabration.services.UserServices;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +18,9 @@ import java.util.Map;
 public class UsersControllers {
 
     private final UserServices userService;
+
+    @Value("${frontend_url}")
+    private String frontendUrl;
 
 
     // GET /api/users?search=&subject=
@@ -83,7 +87,7 @@ public class UsersControllers {
         return ResponseEntity.ok(
                 "<html><body style='font-family:sans-serif;text-align:center;margin-top:80px'>"
                         + "<h2 style='color:#3b82f6'>🎉 " + message + "</h2>"
-                        + "<p><a href='http://localhost:5173/' style='color:#ec4899'>Go to Login →</a></p>"
+                        + "<p><a href='" + frontendUrl + "' style='color:#ec4899'>Go to Login →</a></p>"
                         + "</body></html>"
         );
     }
@@ -100,9 +104,5 @@ public class UsersControllers {
         userService.resetPassword(body.get("token"), body.get("newPassword"));
         return ResponseEntity.ok("Password reset successfully!");
     }
-
-
-
-
 
 }

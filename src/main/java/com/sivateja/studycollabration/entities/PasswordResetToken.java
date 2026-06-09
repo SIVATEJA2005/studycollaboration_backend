@@ -1,4 +1,4 @@
-package com.sivateja.studycollabration.controllers;
+package com.sivateja.studycollabration.entities;
 import com.sivateja.studycollabration.entities.Users;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

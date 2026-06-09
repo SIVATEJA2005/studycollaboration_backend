@@ -1,11 +1,9 @@
 package com.sivateja.studycollabration.serviceImpl;
 import com.sivateja.studycollabration.Security.JwtConfig;
-import com.sivateja.studycollabration.Security.JwtFilter;
-import com.sivateja.studycollabration.controllers.PasswordResetToken;
+import com.sivateja.studycollabration.entities.PasswordResetToken;
 import com.sivateja.studycollabration.dto.Room.RoomResponseDTO;
 import com.sivateja.studycollabration.dto.user.UserRequestDTO;
 import com.sivateja.studycollabration.dto.user.UserResponseDTO;
-import com.sivateja.studycollabration.entities.Room;
 import com.sivateja.studycollabration.entities.Users;
 import com.sivateja.studycollabration.model.UserRole;
 import com.sivateja.studycollabration.repository.PasswordResetTokenRepository;
@@ -213,6 +211,7 @@ public class UserServiceImpl implements UserServices {
         Users user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No account found with that email"));
         passwordResetTokenRepository.deleteByUser(user);
+        passwordResetTokenRepository.flush();
         String token = UUID.randomUUID().toString();
         passwordResetTokenRepository.save(
                 PasswordResetToken.builder().token(token).user(user).build()

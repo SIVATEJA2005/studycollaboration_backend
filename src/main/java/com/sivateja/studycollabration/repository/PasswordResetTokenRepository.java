@@ -1,6 +1,6 @@
 package com.sivateja.studycollabration.repository;
 
-import com.sivateja.studycollabration.controllers.PasswordResetToken;
+import com.sivateja.studycollabration.entities.PasswordResetToken;
 import com.sivateja.studycollabration.entities.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
