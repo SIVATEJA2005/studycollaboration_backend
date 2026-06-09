@@ -38,7 +38,7 @@ public class SecuirtyConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
                 .cors(Customizer.withDefaults()) // Looks for corsConfigurationSource bean
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/login", "/api/users/register", "/health","/ws/**","/api/users/activate").permitAll()
+                        .requestMatchers("/api/users/login", "/api/users/register", "/health","/ws/**","/api/users/activate","/api/users/forgot-password","/api/users/reset-password").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

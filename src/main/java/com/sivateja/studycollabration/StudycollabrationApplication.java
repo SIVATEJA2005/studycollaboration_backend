@@ -7,7 +7,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class StudycollabrationApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(StudycollabrationApplication.class, args);
+
+		;SpringApplication.run(StudycollabrationApplication.class, args);
 	}
 
 }

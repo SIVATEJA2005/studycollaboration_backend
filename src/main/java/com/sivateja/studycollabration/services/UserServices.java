@@ -23,6 +23,10 @@ public interface UserServices {
 
     UserResponseDTO updateProfile(Long userId, UserRequestDTO request);
 
+    public void forgotPassword(String email);
+
+    public void resetPassword(String token, String newPassword);
+
 
     public Map<String, Object> login(String email, String password);
 

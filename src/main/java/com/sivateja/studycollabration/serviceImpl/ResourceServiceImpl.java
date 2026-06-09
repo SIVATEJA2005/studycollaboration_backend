@@ -16,8 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.sivateja.studycollabration.serviceImpl.CloudinaryService;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,6 @@ public class ResourceServiceImpl implements ResourceService {
     private final SimpMessagingTemplate messagingTemplate;
     private final LinkPreviewServiceImpl linkPreviewService;
     private final CloudinaryService cloudinaryService;
-    // AI services
     private final PdfTextExtractorService pdfTextExtractorService;
     private final EmbeddingService embeddingService;
     private final PineconeService pineconeService;
@@ -65,7 +62,6 @@ public class ResourceServiceImpl implements ResourceService {
                                           String title, Users user) throws IOException {
         Room room = getRoom(roomId);
 
-        // ✅ Upload to Cloudinary instead of local disk
         String fileUrl = cloudinaryService.uploadFile(file, "resources/" + roomId);
 
         ResourceType type = detectType(file.getContentType());
@@ -73,7 +69,7 @@ public class ResourceServiceImpl implements ResourceService {
 
         Resource resource = Resource.builder()
                 .title(title != null && !title.isBlank() ? title : originalName)
-                .url(fileUrl) // ✅ Cloudinary public URL stored in DB
+                .url(fileUrl)
                 .type(type)
                 .originalFileName(originalName)
                 .fileSize(file.getSize())
@@ -83,10 +79,9 @@ public class ResourceServiceImpl implements ResourceService {
 
         resource = resourceRepository.save(resource);
 
-        // ✅ Auto-index PDF into Pinecone after saving
         if (type == ResourceType.PDF) {
             indexPdfAsync(
-                    fileUrl,       // ✅ pass Cloudinary URL instead of local path
+                    fileUrl,
                     originalName,
                     String.valueOf(resource.getId()),
                     String.valueOf(roomId)

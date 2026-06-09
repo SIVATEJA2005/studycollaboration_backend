@@ -1,15 +1,18 @@
 package com.sivateja.studycollabration.serviceImpl;
 import com.sivateja.studycollabration.Security.JwtConfig;
 import com.sivateja.studycollabration.Security.JwtFilter;
+import com.sivateja.studycollabration.controllers.PasswordResetToken;
 import com.sivateja.studycollabration.dto.Room.RoomResponseDTO;
 import com.sivateja.studycollabration.dto.user.UserRequestDTO;
 import com.sivateja.studycollabration.dto.user.UserResponseDTO;
 import com.sivateja.studycollabration.entities.Room;
 import com.sivateja.studycollabration.entities.Users;
 import com.sivateja.studycollabration.model.UserRole;
+import com.sivateja.studycollabration.repository.PasswordResetTokenRepository;
 import com.sivateja.studycollabration.repository.RoomRepository;
 import com.sivateja.studycollabration.repository.UserRepository;
 import com.sivateja.studycollabration.services.UserServices;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -36,12 +39,14 @@ public class UserServiceImpl implements UserServices {
     private final AuthenticationManager authenticationManager;
     private final BCryptPasswordEncoder passwordEncoder;
     // Add to constructor injection
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailServices emailService;
 
     @Value("${app.backend.url}")
     private String backendUrl;
 
     @Override
+    @Transactional
     public UserResponseDTO registerUser(UserRequestDTO user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -96,6 +101,7 @@ public class UserServiceImpl implements UserServices {
     }
 
     @Override
+    @Transactional
     public Map<String, Object> login(String email, String password) {
         try {
             // Fetch user by email
@@ -132,7 +138,9 @@ public class UserServiceImpl implements UserServices {
             throw new RuntimeException("Invalid email or password");
         }
     }
+
     @Override
+    @Transactional
     public void deleteUser(Long requesterId, Long targetId) {
         if (!requesterId.equals(targetId))
             throw new AccessDeniedException("You can only delete your own account");
@@ -142,6 +150,7 @@ public class UserServiceImpl implements UserServices {
     }
 
     @Override
+    @Transactional
     public List<RoomResponseDTO> getUserRooms(Long userId) {
         userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -171,15 +180,14 @@ public class UserServiceImpl implements UserServices {
                 .build();
     }
 
+    @Transactional
     public UserResponseDTO updateProfile(Long userId, UserRequestDTO req) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
         if (StringUtils.hasText(req.getUserName())) user.setUserName((req.getUserName()));
         if (req.getEmail() != null) user.setEmail(req.getEmail());
         if (req.getDisplayName() != null) user.setDisplayName(req.getDisplayName());
         if (req.getPassword() != null) user.setPassword(req.getPassword());
-
         return toUserDTO(userRepository.save(user));
     }
 
@@ -190,12 +198,38 @@ public class UserServiceImpl implements UserServices {
         if (user.isActive()) {
             return "Account is already activated. Please log in.";
         }
-
         user.setActive(true);
         user.setActivationToken(null); // clear token after use
         userRepository.save(user);
-
         return "Your account has been activated! You can now log in.";
+    }
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
+    @Transactional
+    public void forgotPassword(String email)
+    {
+        Users user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with that email"));
+        passwordResetTokenRepository.deleteByUser(user);
+        String token = UUID.randomUUID().toString();
+        passwordResetTokenRepository.save(
+                PasswordResetToken.builder().token(token).user(user).build()
+        );
+        String resetLink = frontendUrl + "/reset-password?token=" + token;
+        emailService.sendPasswordResetEmail(user.getEmail(), user.getDisplayName(), resetLink);
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword)
+    {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or already used reset link"));
+        Users user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        passwordResetTokenRepository.delete(resetToken);
     }
 
 

@@ -14,6 +14,7 @@ public class EmailServices {
     private String senderEmail;
     @Value("${brevo.sender.name}")
     private String senderName;
+
     public void sendActivationEmail(String toEmail, String toName, String activationLink) {
         try {
             String body = """
@@ -37,4 +38,36 @@ public class EmailServices {
             throw new RuntimeException("Failed to send activation email: " + e.getMessage());
         }
     }
+
+
+    public void sendPasswordResetEmail(String toEmail, String toName, String resetLink) {
+        try {
+            String body = """
+            {
+              "sender": { "name": "%s", "email": "%s" },
+              "to": [{ "email": "%s", "name": "%s" }],
+              "subject": "Reset your Brain Bridge password",
+              "htmlContent": "<h2>Password Reset Request</h2><p>Hi %s,</p><p>Click below to reset your Brain Bridge password:</p><a href='%s' style='background:#ec4899;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;'>Reset Password</a><p>If you did not request this, ignore this email.</p>"
+            }
+            """.formatted(senderName, senderEmail, toEmail, toName, toName, resetLink);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .header("accept", "application/json")
+                    .header("api-key", brevoApiKey)
+                    .header("content-type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send reset email: " + e.getMessage());
+        }
+    }
+
+
+
+
+
+
 }

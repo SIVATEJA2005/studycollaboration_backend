@@ -18,6 +18,7 @@ public class UsersControllers {
 
     private final UserServices userService;
 
+
     // GET /api/users?search=&subject=
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> getAllUsers(
@@ -86,4 +87,22 @@ public class UsersControllers {
                         + "</body></html>"
         );
     }
+
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> body) {
+        userService.forgotPassword(body.get("email"));
+        return ResponseEntity.ok("Reset link sent to your email.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> body) {
+        userService.resetPassword(body.get("token"), body.get("newPassword"));
+        return ResponseEntity.ok("Password reset successfully!");
+    }
+
+
+
+
+
 }
