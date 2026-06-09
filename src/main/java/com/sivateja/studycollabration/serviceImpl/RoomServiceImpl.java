@@ -28,7 +28,6 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
 
-    // POST /room/create
     @Transactional
     public RoomResponseDTO createRoom(RoomRequestDTO req) {
         String inviteCode = UUID.randomUUID().toString()
@@ -40,7 +39,6 @@ public class RoomServiceImpl implements RoomService {
 
         Room room = toRoom(req, inviteCode, creator);
 
-        // Create the membership record for the creator as ADMIN
         RoomMembers membership = RoomMembers.builder()
                 .room(room)
                 .user(creator)

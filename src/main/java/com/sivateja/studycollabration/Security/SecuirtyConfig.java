@@ -1,4 +1,5 @@
 package com.sivateja.studycollabration.Security;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -70,6 +71,11 @@ public class SecuirtyConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception
     {
         return config.getAuthenticationManager();
+    }
+
+    @PostConstruct
+    public void checkCors() {
+        System.out.println("Frontend URL = " + frontend_url);
     }
 
 
