@@ -36,7 +36,6 @@ public class UserServiceImpl implements UserServices {
     private final JwtConfig jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final BCryptPasswordEncoder passwordEncoder;
-    // Add to constructor injection
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailServices emailService;
 
@@ -50,10 +49,8 @@ public class UserServiceImpl implements UserServices {
             throw new RuntimeException("Email already exists");
         }
 
-        // Generate activation token
         String token = UUID.randomUUID().toString();
 
-        // Build user entity — inactive until email verified
         Users userEntity = toUserEntity(user);
         userEntity.setPassword(passwordEncoder.encode(userEntity.getPassword()));
         userEntity.setActive(false);
@@ -61,7 +58,6 @@ public class UserServiceImpl implements UserServices {
 
         Users savedUser = userRepository.save(userEntity);
 
-        // Send activation email
         String activationLink = backendUrl + "/api/users/activate?token=" + token;
         emailService.sendActivationEmail(savedUser.getEmail(), savedUser.getDisplayName(), activationLink);
 
@@ -102,22 +98,16 @@ public class UserServiceImpl implements UserServices {
     @Transactional
     public Map<String, Object> login(String email, String password) {
         try {
-            // Fetch user by email
+
             Users user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User with email not found"));
 
-            // Authenticate using Spring Security (username + password)
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getUserName(), password)
             );
 
-            // Get UserDetails
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-            // Generate JWT
             String token = jwtUtil.generateToken(userDetails);
-
-            // Build user data map
             Map<String, Object> userMap = new HashMap<>();
             userMap.put("id", user.getId());
             userMap.put("email", user.getEmail());
@@ -125,7 +115,6 @@ public class UserServiceImpl implements UserServices {
             userMap.put("displayName", user.getDisplayName());
             userMap.put("role", user.getRole());
 
-            // Build final response map
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
             response.put("user", userMap);

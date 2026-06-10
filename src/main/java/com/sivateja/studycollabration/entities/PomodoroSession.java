@@ -1,14 +1,15 @@
 package com.sivateja.studycollabration.entities;
 
-
-
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Table(name = "pomodoro_sessions")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PomodoroSession {
 
     @Id
@@ -16,31 +17,30 @@ public class PomodoroSession {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_id")
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "started_by")
     private Users startedBy;
 
-    // FOCUS | SHORT_BREAK | LONG_BREAK
-    @Column(nullable = false)
-    private String phase;
+    private String phase;           // FOCUS | SHORT_BREAK | LONG_BREAK
+    private int durationSeconds;    // total duration for this phase
+    private String status;          // RUNNING | PAUSED | FINISHED
 
-    // duration in seconds
-    @Column(nullable = false)
-    private int durationSeconds;
+    private LocalDateTime startedAt;   // start of the CURRENT run segment
+    private LocalDateTime pausedAt;    // when it was last paused
 
-    // when the timer actually started (used by clients to sync)
-    private LocalDateTime startedAt;
+    @Builder.Default
+    private int elapsedSeconds = 0;    // accumulated seconds from all previous run segments
 
-    // RUNNING | PAUSED | FINISHED
-    @Column(nullable = false)
-    private String status;
-
-    // how many pomodoros completed today in this room
-    private int pomodoroCount;
-
-    @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    private int pomodoroCount = 0;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }
