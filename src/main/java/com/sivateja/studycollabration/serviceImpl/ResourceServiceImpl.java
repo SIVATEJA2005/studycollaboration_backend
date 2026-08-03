@@ -142,16 +142,12 @@ public class ResourceServiceImpl implements ResourceService {
             try {
                 log.info("Starting PDF indexing for resource: {}", resourceId);
 
-                // Download PDF bytes from Cloudinary URL
                 byte[] pdfBytes = new java.net.URL(fileUrl).openStream().readAllBytes();
 
-                // Extract text from bytes
                 String text = pdfTextExtractorService.extractTextFromBytes(pdfBytes);
 
-                // Split into chunks
                 List<String> chunks = pdfTextExtractorService.splitIntoChunks(text, 500);
 
-                // Embed and upsert each chunk into Pinecone
                 for (int i = 0; i < chunks.size(); i++) {
                     String chunkText = chunks.get(i);
                     List<Double> embedding = embeddingService.getEmbedding(chunkText);

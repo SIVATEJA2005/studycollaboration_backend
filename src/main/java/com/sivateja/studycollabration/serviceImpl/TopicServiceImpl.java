@@ -61,7 +61,7 @@ public class TopicServiceImpl implements TopicService {
     @Override
     @Transactional
     public TopicResponseDTO claimTopic(Long topicId, Users user) {
-        Topic topic = getTopic(topicId);
+        Topic topic = getTopicWithLock(topicId);
         checkMember(topic.getRoom(), user);
 
         if (topic.getClaimedBy() != null)
@@ -82,11 +82,14 @@ public class TopicServiceImpl implements TopicService {
         return response;
     }
 
+    private Topic getTopicWithLock(Long topicId) {
+        return topicRepository.findByIdWithLock(topicId);
+    }
     // ── Unclaim Topic ─────────────────────────────────────────────────────────
     @Override
     @Transactional
     public TopicResponseDTO unclaimTopic(Long topicId, Users user) {
-        Topic topic = getTopic(topicId);
+        Topic topic = getTopicWithLock(topicId);
 
         if (topic.getClaimedBy() == null ||
                 !topic.getClaimedBy().getId().equals(user.getId()))
@@ -110,7 +113,7 @@ public class TopicServiceImpl implements TopicService {
     @Transactional
     public TopicResponseDTO updateStatus(Long topicId,
                                          TopicStatus status, Users user) {
-        Topic topic = getTopic(topicId);
+        Topic topic =getTopicWithLock(topicId);;
 
         // only the person who claimed it can update status
         if (topic.getClaimedBy() == null ||

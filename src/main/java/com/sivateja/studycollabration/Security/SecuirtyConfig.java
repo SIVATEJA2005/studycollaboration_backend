@@ -28,10 +28,8 @@ import java.util.List;
 public class SecuirtyConfig {
 
     private final JwtFilter jwtFilter;
-
     @Value("${frontend_url}")
     private String frontend_url;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -46,6 +44,7 @@ public class SecuirtyConfig {
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

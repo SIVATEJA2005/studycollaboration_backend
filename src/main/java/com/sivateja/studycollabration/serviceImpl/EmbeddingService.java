@@ -7,10 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 
 @Slf4j
 @Service
@@ -18,12 +18,12 @@ public class EmbeddingService {
 
     @Value("${gemini.api.key}")
     private String geminiApiKey;
-
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    // ✅ FIXED: gemini-embedding-001 is the correct available model (outputs 3072 dimensions)
+
     private static final String EMBEDDING_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
+
     public List<Double> getEmbedding(String text) {
         try {
             HttpHeaders headers = new HttpHeaders();

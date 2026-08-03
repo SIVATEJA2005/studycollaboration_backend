@@ -48,19 +48,14 @@ public class UserServiceImpl implements UserServices {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-
         String token = UUID.randomUUID().toString();
-
         Users userEntity = toUserEntity(user);
         userEntity.setPassword(passwordEncoder.encode(userEntity.getPassword()));
         userEntity.setActive(false);
         userEntity.setActivationToken(token);
-
         Users savedUser = userRepository.save(userEntity);
-
         String activationLink = backendUrl + "/api/users/activate?token=" + token;
         emailService.sendActivationEmail(savedUser.getEmail(), savedUser.getDisplayName(), activationLink);
-
         return toUserDTO(savedUser);
     }
 
